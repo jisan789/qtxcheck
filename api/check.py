@@ -1,17 +1,18 @@
 import re
 import json
 import asyncio
-from telethon import TelegramClient, events
-from telethon.sessions import StringSession
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
+from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 
 api_id = 28345038
 api_hash = '6c438bbc256629655ca14d4f74de0541'
 
-# Important: must create session with local file path inside Vercel tmp
-client = TelegramClient('./approver_session/session', api_id, api_hash)
+# 🔐 Directly embed your session here (only if environment variable not possible)
+string_session = "1BVtsOLUBu4NV6ClaIBivCHXk-7bfLiSnajPLd9kQ59AKu1KJGzln1srD_aHwTTmLaShz9heGTQbBCice19uSRAq1e9iFN7FOyiSRtlJT08ezofj4xiQ4y_mVVQui7-VEHYKX9dsHAZtTKCe0c5j6raQeuZ61VBI-BOVpBN-y-xcLpblqJq5lcb3kO_3KbLfZ19r-ET0CsQdkPdzR3YZjeSOJc95Doc74JEgzvCa2cBA5dQmjqVd-KMejdok20Qs55tz2llzTt0QWIKmqf_ZxCQgq-tUEC4gzU3rTMJbI8LpFrFxq-gSht-wCG2fpH1z4YUHLCvuBN1k9gaTd1L1vkipTF5iqyvM="
 
+client = TelegramClient(StringSession(string_session), api_id, api_hash)
 app = FastAPI()
 
 def clean_number(value):
@@ -58,7 +59,6 @@ def parse_bot_reply_consistent(text):
 async def check(id: str = Query(...)):
     await client.connect()
     bot = await client.get_entity("@QuotexPartnerBot")
-
     event_future = asyncio.Future()
 
     @client.on(events.NewMessage(chats=bot))
@@ -69,9 +69,9 @@ async def check(id: str = Query(...)):
     await client.send_message(bot, id)
 
     try:
-        response_text = await asyncio.wait_for(event_future, timeout=10)
+        response = await asyncio.wait_for(event_future, timeout=10)
         await client.disconnect()
-        return JSONResponse(parse_bot_reply_consistent(response_text))
+        return JSONResponse(parse_bot_reply_consistent(response))
     except asyncio.TimeoutError:
         await client.disconnect()
-        return JSONResponse({"error": "Timeout waiting for response"}, status_code=504)
+        return JSONResponse({"error": "Timeout"}, status_code=504)
